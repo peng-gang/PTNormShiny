@@ -6,8 +6,21 @@ source("parameter.R")
 source("functions.R")
 
 shinyServer(function(input, output, session) {
-  val.single <- reactiveValues(norm.method.output = NULL)
-  raw.data.clean <- NULL
+  rlt.single <- reactiveValues(
+    box = NULL,
+    cv = NULL,
+    cluster = NULL
+  )
+  
+  rlt.multi <- reactiveValues(
+    box = NULL,
+    cv = NULL,
+    cluster = NULL
+  )
+  
+  raw.data.clean.single <- NULL
+  raw.data.clean.multi <- NULL
+  
   
   input.protein.single <- reactive({
     infile <- input$inputprotein.single
@@ -35,6 +48,36 @@ shinyServer(function(input, output, session) {
     )
   })
   
+  
+  
+  input.protein.multi <- reactive({
+    infile <- input$inputprotein.multi
+    if(is.null(infile)){
+      return(NULL)
+    }
+    read.table(
+      infile$datapath,
+      header = TRUE,
+      sep = input$delimiter.multi,
+      stringsAsFactors = FALSE
+    )
+  })
+  
+  input.sample.multi <- reactive({
+    infile <- input$inputsample.multi
+    if(is.null(infile)){
+      return(NULL)
+    }
+    read.table(
+      infile$datapath,
+      header = TRUE,
+      sep = input$delimiter.multi,
+      stringsAsFactors = FALSE
+    )
+  })
+  
+  
+  
   output$ui.action.single <- renderUI({
     if(is.null(input.protein.single()) || is.null(input.sample.single())){
       return()
@@ -48,14 +91,29 @@ shinyServer(function(input, output, session) {
   })
   
   
+  output$ui.action.multi <- renderUI({
+    if(is.null(input.protein.multi()) || is.null(input.sample.multi())){
+      return()
+    }
+    
+    if(length(input$norm.multi) == 0){
+      return()
+    }
+    
+    actionButton("action.multi", "Run Normalization and Batch Correction")
+  })
+  
+  
+  
   output$ui.download <- renderUI({
     if(input$tabset=="single"){
       if (is.null(input$action.single)) return()
       if (input$action.single==0) return()
     } else if(input$tabset == "multiple"){
-      
+      if(is.null(input$action.multi)) return()
+      if(input$action.multi == 0) return()
     } else if(input$tabset == "about"){
-      
+      return()
     }
 
     actionButton('download', "Download Results")
@@ -100,7 +158,7 @@ shinyServer(function(input, output, session) {
     
     content = function(file) {
       idx.norm.single.output <- as.integer(input$norm.single.output)
-      rlt <- norm.functions[[idx.norm.single.output]](raw.data.clean)
+      rlt <- norm.functions[[idx.norm.single.output]](raw.data.clean.single)
       write.csv(rlt, file, quote = FALSE)
     }
   )
@@ -128,6 +186,13 @@ shinyServer(function(input, output, session) {
     updateTabsetPanel(session, "tabset", newvalue)
   })
   
+  observeEvent(input$link_to_tabpanel_about_multi, {
+    newvalue <- "about"
+    updateTabsetPanel(session, "tabset", newvalue)
+  })
+  
+  
+  ## normalization single run
   observeEvent(
     input$action.single, 
     handlerExpr = {
@@ -137,25 +202,68 @@ shinyServer(function(input, output, session) {
       #raw.data <- read.csv("www/data.single.csv", stringsAsFactors = FALSE)
       #sample.info <- read.csv("www/sample.single.csv", stringsAsFactors = FALSE)
       raw.data <- input.protein.single()
-      raw.data.clean <<- data.clean(raw.data)
+      raw.data.clean.single <<- data.clean(raw.data)
       sample.info <- input.sample.single()
       
       norm.data <- list()
       for(i in 1:length(idx.norm.single)){
         idx <- as.integer(idx.norm.single[i])
-        norm.data[[i]] <- norm.functions[[idx]](raw.data.clean)
+        norm.data[[i]] <- norm.functions[[idx]](raw.data.clean.single)
       }
       
       output$plot.box <- renderPlot({
-        box.compare.single(raw.data.clean, norm.data, idx.norm.single)
+        rlt.single$box <- box.compare.single(raw.data.clean.single, norm.data, idx.norm.single)
+        rlt.single$box
       })
       
       output$plot.cv <- renderPlot({
-        cv.compare.single(raw.data.clean, norm.data, idx.norm.single, sample.info)
+        rlt.single$cv <- cv.compare.single(raw.data.clean.single, norm.data, idx.norm.single, sample.info)
+        rlt.single$cv
       })
       
       output$plot.cluster <- renderPlot({
-        cluster.compare.single(raw.data.clean, norm.data, idx.norm.single)
+        rlt.single$cluster <- cluster.compare.single(raw.data.clean.single, norm.data, idx.norm.single)
+        rlt.single$cluster
+      })
+    }
+  )
+  
+  
+  ## normalization multiple runs
+  observeEvent(
+    input$action.multi, 
+    handlerExpr = {
+      #idx.norm.single <- 1:3
+      idx.norm.multi <- input$norm.multi
+      #idx.batch.multi <- 1:3
+      idx.batch.multi <- input$batch.multi
+      
+      
+      #raw.data <- read.csv("www/data.single.csv", stringsAsFactors = FALSE)
+      #sample.info <- read.csv("www/sample.single.csv", stringsAsFactors = FALSE)
+      raw.data <- input.protein.multi()
+      raw.data.clean.multi <<- data.clean(raw.data)
+      sample.info <- input.sample.multi()
+      
+      norm.data <- list()
+      for(i in 1:length(idx.norm.single)){
+        idx <- as.integer(idx.norm.single[i])
+        norm.data[[i]] <- norm.functions[[idx]](raw.data.clean.single)
+      }
+      
+      output$plot.box <- renderPlot({
+        rlt.single$box <- box.compare.single(raw.data.clean.single, norm.data, idx.norm.single)
+        rlt.single$box
+      })
+      
+      output$plot.cv <- renderPlot({
+        rlt.single$cv <- cv.compare.single(raw.data.clean.single, norm.data, idx.norm.single, sample.info)
+        rlt.single$cv
+      })
+      
+      output$plot.cluster <- renderPlot({
+        rlt.single$cluster <- cluster.compare.single(raw.data.clean.single, norm.data, idx.norm.single)
+        rlt.single$cluster
       })
     }
   )
@@ -173,5 +281,46 @@ shinyServer(function(input, output, session) {
       }
       
     })
+  
+  
+  observeEvent(
+    input$tabset,
+    handlerExpr = {
+      if(input$tabset == "single"){
+        output$plot.box <- NULL
+        output$plot.cv <- NULL
+        output$plot.cluster <- NULL
+        if(!is.null(rlt.single$box)){
+          output$plot.box <- renderPlot(rlt.single$box)
+        }
+        
+        if(!is.null(rlt.single$cv)){
+          output$plot.cv <- renderPlot(rlt.single$cv)
+        }
+        
+        if(!is.null(rlt.single$cluster)){
+          output$plot.cluster <- renderPlot(rlt.single$cluster)
+        }
+      } else if(input$tabset == "multi"){
+        output$plot.box <- NULL
+        output$plot.cv <- NULL
+        output$plot.cluster <- NULL
+        
+        if(!is.null(rlt.multi$box)){
+          output$plot.box <- renderPlot(rlt.multi$box)
+        }
+        
+        if(!is.null(rlt.multi$cv)){
+          output$plot.cv <- renderPlot(rlt.multi$cv)
+        }
+        
+        if(!is.null(rlt.multi$cluster)){
+          output$plot.cluster <- renderPlot(rlt.multi$cluster)
+        }
+      } else if(input$tabset == "about"){
+        
+      }
+    }
+  )
   
 })

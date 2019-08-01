@@ -155,4 +155,5 @@ cluster.compare.single <- function(raw.data.clean, norm.data, idx.norm.single){
     plotMDS(log2(norm.data[[i]]), main = names(norm.method)[as.integer(idx.norm.single[i])])
   }
   par(op)
+  recordPlot()
 }

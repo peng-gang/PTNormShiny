@@ -4,3 +4,9 @@ norm.method <- list(
   "Quantile" = 3
   #"TMM" = 4
 )
+
+batch.method <- list(
+  "Combat" = 1,
+  "Limma" = 2,
+  "IRS" = 3
+)
