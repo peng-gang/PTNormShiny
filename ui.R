@@ -6,7 +6,7 @@ shinyUI(
   fluidPage(
     titlePanel(
       "ProteomicsTools",
-      title = tags$strong("Proteomics Data Normalization and Batch Effect Correction")),
+      title = tags$strong("Proteomics Data Normalization and Batch Effect Correction (Beta)")),
     
     sidebarLayout(
       sidebarPanel(
@@ -40,7 +40,7 @@ shinyUI(
               title = "Please select a normalization method.",
               selectInput("norm.single", label = h4("Normalization Method"),
                           choices = norm.method,
-                          selected = 1)
+                          selected = 1, multiple = TRUE)
             ),
             
             tags$div(
@@ -59,8 +59,8 @@ shinyUI(
             ),
             
             
-            p(a("Example of proteomics data", href="proteomics_single.csv", download="proteomics_single.csv")),
-            p(a("Example of sample information data", href="sample_info_single.csv", download="sample_info_single.csv")),
+            p(a("Example of proteomics data", href="protein.single.csv", download="protein.single.csv")),
+            p(a("Example of sample information data", href="sample.single.csv", download="sample.single.csv")),
             actionLink("link_to_tabpanel_about_single", "Details about input file format"),
             
             uiOutput('ui.action.single')
@@ -68,12 +68,14 @@ shinyUI(
           
           
           tabPanel(
-            "Multiple Runs",
+            "Multiple Runs", 
+            p("Under development"),
             value = "multi"
           ),
           
           tabPanel(
             "About",
+            p("An online tool for Proteomics data normalization and batch effect correction"),
             value = "about"
           )
         ),
@@ -86,7 +88,13 @@ shinyUI(
         )
       ),
       
-      mainPanel()
+      mainPanel(
+        plotOutput("plot.box", width = 600),
+        plotOutput("plot.cv", width = 600),
+        plotOutput("plot.cluster", width = 600),
+        fluidRow(column(7, align="right",
+                        uiOutput('ui.download')))
+      )
     )
   )
 )

@@ -1,5 +1,6 @@
 norm.method <- list(
-  "Median" = 1,
-  "Quantile" = 2,
-  "TMM" = 3
+  "Sample Loading" = 1,
+  "Median" = 2,
+  "Quantile" = 3
+  #"TMM" = 4
 )
