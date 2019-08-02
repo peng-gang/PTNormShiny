@@ -2,6 +2,8 @@ library(preprocessCore)
 library(edgeR)
 library(ggplot2)
 library(ggpubr)
+library(limma)
+library(sva)
 
 
 norm.functions <- list(
@@ -36,6 +38,73 @@ norm.functions <- list(
   # }
 )
 
+
+batch.correct.functions <- list(
+  # ComBat Method
+  combat = function(dt, batch, pool = NULL){
+    data.combat <- ComBat(
+      dat = as.matrix(dt),
+      batch = batch,
+      mod = NULL,
+      par.prior = TRUE
+    )
+    
+    data.combat <-  data.combat[apply(data.combat, 1, function(x) all(x > 0)), ]
+    data.combat <- data.frame(data.combat, stringsAsFactors = FALSE)
+    data.combat
+  },
+  
+  # batch effect correction from limma package
+  limma = function(dt, batch, pool = NULL){
+    data.limma <- removeBatchEffect(dt, batch)
+    data.limma <-  data.limma[apply(data.limma, 1, function(x) all(x > 0)), ] 
+    data.limma <- data.frame(data.limma, stringsAsFactors = FALSE)
+    data.limma
+  },
+  
+  # internal reference scaling (IRS) method
+  irs = function(dt, batch, pool){
+    sum.batch <- NULL
+    for(b in unique(batch)){
+      idx <- batch == b
+      dt.batch <- dt[,idx]
+      pool.batch <- pool[idx]
+      sum.batch <- cbind(sum.batch, rowSums(dt.batch[,pool.batch]))
+    }
+    irs.ref <- apply(sum.batch, 1, function(x) exp(mean(log(x))))
+    
+    idx.batch <- 1
+    for(b in unique(batch)){
+      idx <- batch == b
+      dt[,idx] <- dt[,idx] * (irs.ref/sum.batch[,idx.batch])
+      idx.batch <- idx.batch+1
+    }
+    
+    dt
+  }
+)
+
+
+batch.correct <- function(dt, batch, idx.norm, idx.batch.correct, pool=NULL){
+  if(is.null(idx.batch.correct)){
+    for(b in unique(batch)){
+      idx <- batch == b
+      dt[,idx] <- norm.functions[[idx.norm]](dt[,idx])
+    }
+    return(dt)
+  } else {
+    dt.norm <- dt
+    for(b in unique(batch)){
+      idx <- batch == b
+      dt.norm[,idx] <- norm.functions[[idx.norm]](dt.norm[,idx])
+    }
+    
+    return(batch.correct.functions[[idx.batch.correct]](dt.norm, batch, pool))
+  }
+}
+
+
+
 data.clean <- function(x){
   idx.na <- rowSums(is.na(x))
   dt.no.na <- x[!idx.na, ]
@@ -65,6 +134,42 @@ box.compare.single <- function(raw.data.clean, norm.data, idx.norm.single){
       theme_light() + 
       labs(y="Abundance (Log2)", x="") + 
       ggtitle(names(norm.method)[as.integer(idx.norm.single[i])]) +
+      theme(plot.title = element_text(hjust = 0.5))
+    gps[[i+1]] <- gp
+  }
+  
+  gp <- ggarrange(
+    plotlist = gps,
+    ncol = 1,
+    nrow = length(gps)
+  )
+  
+  gp
+}
+
+
+box.compare.multi <- function(raw.data.clean.multi, norm.data, 
+                              name.method, sample.info){
+  gps <- list()
+  dplot.raw <- melt(raw.data.clean.multi, id.vars = NULL)
+  dplot.raw$batch <- factor(rep(sample.info$batch, each = nrow(raw.data.clean.multi)), 
+                            levels = unique(sample.info$batch))
+  gp.raw <- ggplot(dplot.raw) + geom_boxplot(aes(x=variable, y=log2(value), fill=batch)) + 
+    theme_light() + 
+    labs(y="Abundance (Log2)", x="") + 
+    ggtitle("Raw") +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  gps[[1]] <- gp.raw
+  
+  for(i in 1:length(norm.data)){
+    dplot <- melt(norm.data[[i]], id.vars = NULL)
+    dplot$batch <- factor(rep(sample.info$batch, each = nrow(norm.data[[i]])), 
+                          levels = unique(sample.info$batch))
+    gp<- ggplot(dplot) + geom_boxplot(aes(x=variable, y=log2(value), fill=batch)) + 
+      theme_light() + 
+      labs(y="Abundance (Log2)", x="") + 
+      ggtitle(name.method[i]) +
       theme(plot.title = element_text(hjust = 0.5))
     gps[[i+1]] <- gp
   }
@@ -146,6 +251,28 @@ cv.compare.single <- function(raw.data.clean, norm.data, idx.norm.single, sample
     return(gp)
   }
 }
+
+
+
+cv.compare.multi <- function(
+  raw.data.clean.multi, norm.data, 
+  idx.norm.multi, idx.batch.multi, sample.info){
+  if("cv" %in% colnames(sample.info)){
+    cv.unique <- unique(sample.info$cv)
+    cv.unique <- cv.unique[-(which(cv.unique==""))]
+    for(cv in cv.unique){
+      
+    }
+  } else {
+    tb <- table(sample.info$sample.id)
+    if(length(tb)<length(sample.info$sample.id)){
+      
+    } else {
+      
+    }
+  }
+}
+
 
 
 cluster.compare.single <- function(raw.data.clean, norm.data, idx.norm.single){
