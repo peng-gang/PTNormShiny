@@ -20,6 +20,7 @@ shinyServer(function(input, output, session) {
   
   raw.data.clean.single <- NULL
   raw.data.clean.multi <- NULL
+  sample.info.multi <- NULL
   
   
   input.protein.single <- reactive({
@@ -174,37 +175,44 @@ shinyServer(function(input, output, session) {
                   selected = 1, multiple = FALSE),
       
       if(failed)
-        div(tags$b("Please select a normalization method", style = "color: red;")),
+        div(tags$b("Please select a normalization and a batch effect correction method", style = "color: red;")),
       
       footer = tagList(
         fluidRow(
           column(2, offset = 3, modalButton("Cancel")),
-          column(2, uiOutput('ui.download.single'))
+          column(2, uiOutput('ui.download.multi'))
         )
-        #modalButton("Cancel"),
-        #uiOutput('ui.download.single')
-        #actionButton("ok.single", "OK")
       )
     )
   }
   
-  # download single
-  # observeEvent(input$ok.single, {
-  #   if(!is.null(input$norm.single.output)){
-  #     val.single$norm.method.output <- input$norm.single.output
-  #     
-  #     downloadHandler('rlt.csv', content = function(file) {
-  #       print(val.single$norm.method.output)
-  #       write.csv(norm.method, file, row.names = FALSE)
-  #     })
-  #     
-  #     removeModal()
-  #   } else {
-  #     showModal(normMethodModalSingle(failed = TRUE))
-  #   }
-  # })
+  output$ui.download.multi <- renderUI({
+    if(is.null(input$norm.multi.output) || is.null(input$batch.multi.output)){
+      return()
+    } else {
+      downloadButton("download.multi", "Download")
+    }
+  })
   
-  
+  output$download.multi <- downloadHandler(
+    filename = function(){
+      idx.norm.multi.output <- as.integer(input$norm.multi.output)
+      idx.batch.multi.output <- as.integer(input$batch.multi.output)
+      paste0(names(batch.method)[idx.batch.multi.output], "_",
+             names(norm.method)[idx.norm.multi.output], ".norm.csv")
+    },
+    
+    #TODO: check pool
+    content = function(file) {
+      idx.norm.multi.output <- as.integer(input$norm.multi.output)
+      idx.batch.multi.output <- as.integer(input$batch.multi.output)
+      rlt <- batch.correct(
+        raw.data.clean.multi, sample.info.multi$batch, 
+        as.integer(idx.norm.multi.output), as.integer(idx.batch.multi.output), 
+        pool=sample.info.multi$pool)
+      write.csv(rlt, file, quote = FALSE)
+    }
+  )
   
   observeEvent(input$link_to_tabpanel_about_single, {
     newvalue <- "about"
@@ -265,10 +273,11 @@ shinyServer(function(input, output, session) {
       
       
       #raw.data <- read.csv("www/protein.multi.csv", stringsAsFactors = FALSE)
-      #sample.info <- read.csv("www/sample.multi.csv", stringsAsFactors = FALSE)
+      #sample.info.multi <- read.csv("www/sample.multi.csv", stringsAsFactors = FALSE)
       raw.data <- input.protein.multi()
       raw.data.clean.multi <<- data.clean(raw.data)
-      sample.info <- input.sample.multi()
+      sample.info.multi <<- input.sample.multi()
+      #sample.info <- input.sample.multi()
       
       #TODO: chekc error if there is no pool information
       norm.data <- list()
@@ -277,8 +286,8 @@ shinyServer(function(input, output, session) {
       if(length(idx.batch.multi)==0){
         for(i in 1:length(idx.norm.multi)){
           norm.data[[idx.norm.data]] <- batch.correct(
-            raw.data.clean.multi, sample.info$batch, 
-            as.integer(idx.norm.multi[i]), NULL, pool=sample.info$pool)
+            raw.data.clean.multi, sample.info.multi$batch, 
+            as.integer(idx.norm.multi[i]), NULL, pool=sample.info.multi$pool)
           name.method <- c(name.method, names(norm.method)[as.integer(idx.norm.multi[i])])
           idx.norm.data <- idx.norm.data + 1
         }
@@ -286,8 +295,8 @@ shinyServer(function(input, output, session) {
         for(i in 1:length(idx.batch.multi)){
           for(j in 1:length(idx.norm.multi)){
             norm.data[[idx.norm.data]] <- batch.correct(
-              raw.data.clean.multi, sample.info$batch, 
-              as.integer(idx.norm.multi[j]), as.integer(idx.batch.multi[i]), pool=sample.info$pool)
+              raw.data.clean.multi, sample.info.multi$batch, 
+              as.integer(idx.norm.multi[j]), as.integer(idx.batch.multi[i]), pool=sample.info.multi$pool)
             name.method <- c(
               name.method, 
               paste(names(batch.method)[as.integer(idx.batch.multi[i])],
@@ -300,7 +309,7 @@ shinyServer(function(input, output, session) {
       output$plot.box <- renderPlot({
         rlt.multi$box <- box.compare.multi(
           raw.data.clean.multi, norm.data, 
-          name.method, sample.info
+          name.method, sample.info.multi
         )
         rlt.multi$box
       })
@@ -308,7 +317,7 @@ shinyServer(function(input, output, session) {
       output$plot.cv <- renderPlot({
         rlt.multi$cv <- cv.compare.multi(
           raw.data.clean.multi, norm.data, 
-          idx.norm.multi, idx.batch.multi, sample.info
+          name.method, sample.info.multi
         )
         rlt.multi$cv
       })
@@ -316,7 +325,7 @@ shinyServer(function(input, output, session) {
       output$plot.cluster <- renderPlot({
         rlt.multi$cluster <- cluster.compare.multi(
           raw.data.clean.multi, norm.data, 
-          idx.norm.multi, idx.batch.multi, sample.info
+          name.method
         )
         rlt.multi$cluster
       })

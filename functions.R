@@ -149,11 +149,11 @@ box.compare.single <- function(raw.data.clean, norm.data, idx.norm.single){
 
 
 box.compare.multi <- function(raw.data.clean.multi, norm.data, 
-                              name.method, sample.info){
+                              name.method, sample.info.multi){
   gps <- list()
   dplot.raw <- melt(raw.data.clean.multi, id.vars = NULL)
-  dplot.raw$batch <- factor(rep(sample.info$batch, each = nrow(raw.data.clean.multi)), 
-                            levels = unique(sample.info$batch))
+  dplot.raw$batch <- factor(rep(sample.info.multi$batch, each = nrow(raw.data.clean.multi)), 
+                            levels = unique(sample.info.multi$batch))
   gp.raw <- ggplot(dplot.raw) + geom_boxplot(aes(x=variable, y=log2(value), fill=batch)) + 
     theme_light() + 
     labs(y="Abundance (Log2)", x="") + 
@@ -164,8 +164,8 @@ box.compare.multi <- function(raw.data.clean.multi, norm.data,
   
   for(i in 1:length(norm.data)){
     dplot <- melt(norm.data[[i]], id.vars = NULL)
-    dplot$batch <- factor(rep(sample.info$batch, each = nrow(norm.data[[i]])), 
-                          levels = unique(sample.info$batch))
+    dplot$batch <- factor(rep(sample.info.multi$batch, each = nrow(norm.data[[i]])), 
+                          levels = unique(sample.info.multi$batch))
     gp<- ggplot(dplot) + geom_boxplot(aes(x=variable, y=log2(value), fill=batch)) + 
       theme_light() + 
       labs(y="Abundance (Log2)", x="") + 
@@ -193,6 +193,7 @@ cv <- function(df){
 cv.compare.single <- function(raw.data.clean, norm.data, idx.norm.single, sample.info){
   tb <- table(sample.info$sample.id)
   
+  # same technical replicates (same sample id) are used to calcualte CV
   if(length(tb)<length(sample.info$sample.id)){
     sp.dup <- names(tb)[tb>1]
     
@@ -230,6 +231,7 @@ cv.compare.single <- function(raw.data.clean, norm.data, idx.norm.single, sample
     return(gp)
     
   } else {
+    # if there is no technical replicates, cv of all samples are used to calculate CV
     cv.raw <- cv(raw.data.clean)
     
     cv.norm <- NULL
@@ -256,19 +258,104 @@ cv.compare.single <- function(raw.data.clean, norm.data, idx.norm.single, sample
 
 cv.compare.multi <- function(
   raw.data.clean.multi, norm.data, 
-  idx.norm.multi, idx.batch.multi, sample.info){
+  name.method, sample.info){
   if("cv" %in% colnames(sample.info)){
     cv.unique <- unique(sample.info$cv)
     cv.unique <- cv.unique[-(which(cv.unique==""))]
-    for(cv in cv.unique){
-      
+    
+    cv.raw <- NULL
+    cv.name <- NULL
+    for(cv.tmp in cv.unique){
+      idx.cv <- sample.info$cv == cv.tmp
+      cv.raw <- c(cv.raw, cv(raw.data.clean.multi[,idx.cv]))
+      cv.name <- c(cv.name, rep(cv.tmp, nrow(raw.data.clean.multi)))
     }
+    Method <- rep("Raw", length(cv.raw))
+    
+    cv.norm <- NULL
+    for(i in 1:length(norm.data)){
+      cv.norm.tmp <- NULL
+      for(cv.tmp in cv.unique){
+        idx.cv <- sample.info$cv == cv.tmp
+        cv.norm.tmp <- c(cv.norm.tmp, cv(norm.data[[i]][,idx.cv]))
+        cv.name <- c(cv.name, rep(cv.tmp, nrow(norm.data[[i]])))
+      }
+      cv.norm <- c(cv.norm, cv.norm.tmp)
+      Method <- c(Method, rep(name.method[i], length(cv.norm.tmp)))
+    }
+    
+    dplot <- data.frame(
+      cv = c(cv.raw, cv.norm),
+      cv.name = cv.name,
+      Method = factor(Method,
+                      levels = c("Raw", name.method)),
+      stringsAsFactors = FALSE
+    )
+    
+    gp <- ggplot(dplot) + 
+      geom_boxplot(aes(x=cv.name, y = cv, color =Method))  + 
+      theme_light() + 
+      labs(x="", y = "Coefficient of Variation (%)")
+    
+    return(gp)
+    
   } else {
     tb <- table(sample.info$sample.id)
     if(length(tb)<length(sample.info$sample.id)){
+      sp.dup <- names(tb)[tb>1]
       
+      cv.raw <- NULL
+      sp <- NULL
+      for(i in 1:length(sp.dup)){
+        idx <- sample.info$sample.id==sp.dup[i]
+        cv.raw <- c(cv.raw, cv(raw.data.clean[,idx]))
+        sp <- c(sp, rep(sp.dup[i], nrow(raw.data.clean)))
+      }
+      
+      cv.norm <- NULL
+      for(i in 1:length(norm.data)){
+        cv.norm.tmp <- NULL
+        for(j in 1:length(sp.dup)){
+          idx <- sample.info$sample.id == sp.dup[j]
+          cv.norm.tmp <- c(cv.norm.tmp, cv(norm.data[[i]][,idx]))
+        }
+        cv.norm <- c(cv.norm, cv.norm.tmp)
+      }
+      
+      dplot <- data.frame(
+        cv = c(cv.raw, cv.norm),
+        sample = rep(sp, 1+length(norm.data)),
+        Method = factor(rep(c("Raw", name.method), each = length(cv.raw)),
+                        levels = c("Raw", name.method)),
+        stringsAsFactors = FALSE
+      )
+      
+      gp <- ggplot(dplot) + 
+        geom_boxplot(aes(x=sample, y=cv, color=Method)) + 
+        theme_light() +
+        labs(x="", y = "Coefficient of Variation (%)")
+      
+      return(gp)
     } else {
+      cv.raw <- cv(raw.data.clean)
       
+      cv.norm <- NULL
+      for(i in 1:length(norm.data)){
+        cv.norm <- c(cv.norm, cv(norm.data[[i]]))
+      }
+      
+      dplot <- data.frame(
+        cv = c(cv.raw, cv.norm),
+        Method = factor(rep(c("Raw", name.method), each = length(cv.raw)),
+                        levels = c("Raw", name.method))
+      )
+      
+      gp <- ggplot(dplot) + 
+        geom_boxplot(aes(x=Method, y=cv)) + 
+        theme_light() +
+        labs(x="", y = "Coefficient of Variation (%)")
+      
+      return(gp)
     }
   }
 }
@@ -284,3 +371,16 @@ cluster.compare.single <- function(raw.data.clean, norm.data, idx.norm.single){
   par(op)
   recordPlot()
 }
+
+cluster.compare.multi <- function(raw.data.clean.multi, norm.data, name.method){
+  op <- par(mfrow = c(ceiling((1+length(norm.data))/2),2))
+  plotMDS(log2(raw.data.clean.multi), main = "Raw")
+  for(i in 1:length(norm.data)){
+    plotMDS(log2(norm.data[[i]]), main = name.method[i])
+  }
+  par(op)
+  recordPlot()
+}
+
+
+
