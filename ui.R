@@ -59,8 +59,8 @@ shinyUI(
             ),
             
             
-            p(a("Example of proteomics data", href="protein.single.csv", download="protein.single.csv")),
-            p(a("Example of sample information data", href="sample.single.csv", download="sample.single.csv")),
+            p(a("Example of proteomics data (single run)", href="protein.single.csv", download="protein.single.csv")),
+            p(a("Example of sample information data (single run)", href="sample.single.csv", download="sample.single.csv")),
             actionLink("link_to_tabpanel_about_single", "Details about input file format"),
             
             uiOutput('ui.action.single')
@@ -121,8 +121,8 @@ shinyUI(
             ),
             
             
-            p(a("Example of proteomics data", href="protein.multi.csv", download="protein.multi.csv")),
-            p(a("Example of sample information data", href="sample.multi.csv", download="sample.multi.csv")),
+            p(a("Example of proteomics data (multi runs)", href="protein.multi.csv", download="protein.multi.csv")),
+            p(a("Example of sample information data (multi runs)", href="sample.multi.csv", download="sample.multi.csv")),
             actionLink("link_to_tabpanel_about_multi", "Details about input file format"),
             
             uiOutput('ui.action.multi')
