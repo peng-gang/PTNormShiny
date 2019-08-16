@@ -13,7 +13,7 @@ shinyUI(
         tabsetPanel(
           id="tabset",
           tabPanel(
-            "Single Run",
+            "Single Batch",
             value = "single",
             
             tags$div(
@@ -68,7 +68,7 @@ shinyUI(
           
           
           tabPanel(
-            "Multiple Runs", 
+            "Multiple Batches", 
             value = "multi",
             
             tags$div(
@@ -131,7 +131,8 @@ shinyUI(
           tabPanel(
             "About",
             value = "about",
-            p("An online tool for Proteomics data normalization and batch effect correction")
+            p("An online tool for Proteomics data normalization and batch effect correction. The detailed introduction and user 
+            guide can be found ", a("here.", href="https://peng-gang.github.io/PTNormShinyUserGuide/"))
             
           )
         ),

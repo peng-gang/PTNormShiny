@@ -4,7 +4,7 @@ library(ggplot2)
 library(ggpubr)
 library(limma)
 library(sva)
-
+library(reshape2)
 
 norm.functions <- list(
   # sample loading normalization
