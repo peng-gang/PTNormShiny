@@ -5,6 +5,7 @@ library(ggpubr)
 library(limma)
 library(sva)
 library(reshape2)
+library(ggsci)
 
 norm.functions <- list(
   # sample loading normalization
@@ -155,7 +156,7 @@ box.compare.multi <- function(raw.data.clean.multi, norm.data,
   dplot.raw$batch <- factor(rep(sample.info.multi$batch, each = nrow(raw.data.clean.multi)), 
                             levels = unique(sample.info.multi$batch))
   gp.raw <- ggplot(dplot.raw) + geom_boxplot(aes(x=variable, y=log2(value), fill=batch)) + 
-    theme_light() + 
+    theme_light() + scale_fill_npg() + 
     labs(y="Abundance (Log2)", x="") + 
     ggtitle("Raw") +
     theme(plot.title = element_text(hjust = 0.5))
@@ -167,7 +168,7 @@ box.compare.multi <- function(raw.data.clean.multi, norm.data,
     dplot$batch <- factor(rep(sample.info.multi$batch, each = nrow(norm.data[[i]])), 
                           levels = unique(sample.info.multi$batch))
     gp<- ggplot(dplot) + geom_boxplot(aes(x=variable, y=log2(value), fill=batch)) + 
-      theme_light() + 
+      theme_light() + scale_fill_npg() + 
       labs(y="Abundance (Log2)", x="") + 
       ggtitle(name.method[i]) +
       theme(plot.title = element_text(hjust = 0.5))
@@ -225,7 +226,7 @@ cv.compare.single <- function(raw.data.clean, norm.data, idx.norm.single, sample
     
     gp <- ggplot(dplot) + 
       geom_boxplot(aes(x=sample, y=cv, color=Method)) + 
-      theme_light() +
+      theme_light() + scale_color_npg() + 
       labs(x="", y = "Coefficient of Variation (%)")
     
     return(gp)
@@ -294,7 +295,7 @@ cv.compare.multi <- function(
     
     gp <- ggplot(dplot) + 
       geom_boxplot(aes(x=cv.name, y = cv, color =Method))  + 
-      theme_light() + 
+      theme_light() + scale_color_npg() + 
       labs(x="", y = "Coefficient of Variation (%)")
     
     return(gp)
@@ -332,7 +333,7 @@ cv.compare.multi <- function(
       
       gp <- ggplot(dplot) + 
         geom_boxplot(aes(x=sample, y=cv, color=Method)) + 
-        theme_light() +
+        theme_light() + scale_color_npg() + 
         labs(x="", y = "Coefficient of Variation (%)")
       
       return(gp)
@@ -364,9 +365,10 @@ cv.compare.multi <- function(
 
 cluster.compare.single <- function(raw.data.clean, norm.data, idx.norm.single){
   op <- par(mfrow = c(ceiling((1+length(norm.data))/2),2))
-  plotMDS(log2(raw.data.clean), main = "Raw")
+  plotMDS(log2(raw.data.clean), main = "Raw", gene.selection = "common")
   for(i in 1:length(norm.data)){
-    plotMDS(log2(norm.data[[i]]), main = names(norm.method)[as.integer(idx.norm.single[i])])
+    plotMDS(log2(norm.data[[i]]), main = names(norm.method)[as.integer(idx.norm.single[i])],
+            gene.selection = "common")
   }
   par(op)
   recordPlot()
@@ -374,9 +376,9 @@ cluster.compare.single <- function(raw.data.clean, norm.data, idx.norm.single){
 
 cluster.compare.multi <- function(raw.data.clean.multi, norm.data, name.method){
   op <- par(mfrow = c(ceiling((1+length(norm.data))/2),2))
-  plotMDS(log2(raw.data.clean.multi), main = "Raw")
+  plotMDS(log2(raw.data.clean.multi), main = "Raw", gene.selection = "common")
   for(i in 1:length(norm.data)){
-    plotMDS(log2(norm.data[[i]]), main = name.method[i])
+    plotMDS(log2(norm.data[[i]]), main = name.method[i], gene.selection = "common")
   }
   par(op)
   recordPlot()
